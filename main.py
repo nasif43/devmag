@@ -5,15 +5,33 @@ import requests
 from itertools import cycle
 import re
 
-feed_urls = [
+# Function to colorize tags
+def colorize_tags(tags):
+    color_cycle = cycle(list(tag_colors.values()))
+    colored_tags = [f'<span style="color:{next(color_cycle)}">{tag}</span>' for tag in tags]
+    return ', '.join(colored_tags)
+
+def filter_entries_with_selected_tags(entry):
+    if 'tags' in entry:
+        entry_tags = [tag.term.lower() for tag in entry.tags]
+        return any(tag in entry_tags for tag in selected_tags)
+    return False
+
+# Load user-specific data (feed URLs) from user inputs
+
+feed_urls = st.sidebar.multiselect("Select Feed URLs", [
     'https://dev.to/feed', 'https://hnrss.org/frontpage',
     'https://medium.com/feed/tag/openai',
     'https://medium.com/feed/tag/data-science', 'https://medium.com/feed/tag/ml',
-    'https://arstechnica.com/tech-policy/feed/', 'https://www.wired.com/feed/rss',
-    
-]
+    'https://arstechnica.com/tech-policy/feed/', 'https://www.wired.com/feed/rss'
+], default=[
+    'https://dev.to/feed', 'https://hnrss.org/frontpage',
+    'https://medium.com/feed/tag/openai',
+    'https://medium.com/feed/tag/data-science', 'https://medium.com/feed/tag/ml',
+    'https://arstechnica.com/tech-policy/feed/', 'https://www.wired.com/feed/rss'
+])
 
-# List of available tags for selection
+# Define available tags
 available_tags = [
     'machine-learning', 'artificial-intelligence', 'data-science', 'openai',
     'chatgpt', 'neural-networks', 'deep-learning', 'natural-language-processing',
@@ -21,9 +39,8 @@ available_tags = [
     'ethics-in-ai', 'machine-vision', 'data-analysis', 'predictive-analytics',
     'big-data', 'data-mining', 'data-visualization', 'cloud-computing',
     'programming', 'algorithms', 'tech-news', 'innovation', 'future-tech', 'langchain',
-    'cloud-cost-optimization','finance', 'fintech'
+    'cloud-cost-optimization', 'finance', 'fintech'
 ]
-
 
 # Dictionary to assign colors to tags
 tag_colors = {
@@ -36,24 +53,12 @@ tag_colors = {
 
 st.title("DevMag - The coolest magazine for developers")
 
-# Initialize selected_tags
-selected_tags = st.multiselect("Select Tags", available_tags, default=available_tags)
+# Initialize selected_tags using the sidebar
+selected_tags = st.sidebar.multiselect("Select Tags", available_tags, default=available_tags)
 
-# Function to color code tags
-def colorize_tags(tags):
-    color_cycle = cycle(list(tag_colors.values()))
-    colored_tags = [f'<span style="color:{next(color_cycle)}">{tag}</span>' for tag in tags]
-    return ', '.join(colored_tags)
+# ... (rest of your code, excluding the selected_tags list)
 
-def filter_entries_with_selected_tags(entry):
-    if 'tags' in entry:
-        entry_tags = [tag.term.lower() for tag in entry.tags]
-        return any(tag in entry_tags for tag in selected_tags)
-    return False
-
-
-# ... (rest of your code)
-
+# Loop through each feed URL
 for feed_url in feed_urls:
     try:
         feed = feedparser.parse(feed_url)
@@ -67,11 +72,15 @@ for feed_url in feed_urls:
 
     filtered_entries = [entry for entry in feed.entries if filter_entries_with_selected_tags(entry)]
 
+    # Loop through each filtered entry and display its details
     for entry in filtered_entries:
         entry_title = entry.title
         entry_link = entry.link
         entry_published = entry.published
         entry_tags = [tag.term.lower() for tag in entry.get('tags', [])]
+
+        st.write("---")  # Display a horizontal rule between entries
+
         
         # Handle cases where there is no 'description' attribute
         if hasattr(entry, 'description'):
