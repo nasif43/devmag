@@ -1,4 +1,8 @@
+import streamlit as st
 import feedparser
+from bs4 import BeautifulSoup
+import requests
+from itertools import cycle
 
 feed_urls = [
     'https://dev.to/feed', 'https://hnrss.org/frontpage',
@@ -8,57 +12,77 @@ feed_urls = [
     'https://www.smashingmagazine.com/feed/',
     'https://feed.infoq.com/architecture-design/',
     'https://www.theverge.com/tech/rss/index.xml',
-    'https://www.phoronix.com/rss.php', 'https://opensource.com/feed',
-    'https://www.linuxjournal.com/node/feed'
 ]
 
-desired_tags = [
+# List of available tags for selection
+available_tags = [
     'machine-learning', 'artificial-intelligence', 'data-science', 'openai',
-    'chatgpt'
+    'chatgpt', 'neural-networks', 'deep-learning', 'natural-language-processing',
+    'computer-vision', 'reinforcement-learning', 'robotics', 'automation',
+    'ethics-in-ai', 'machine-vision', 'data-analysis', 'predictive-analytics',
+    'big-data', 'data-mining', 'data-visualization', 'cloud-computing',
+    'programming', 'algorithms', 'tech-news', 'innovation', 'future-tech'
 ]
+
+
+# Dictionary to assign colors to tags
+tag_colors = {
+    'machine-learning': 'purple',
+    'artificial-intelligence': 'blue',
+    'data-science': 'green',
+    'openai': 'orange',
+    'chatgpt': 'red'
+}
+
+st.title("RSS Feed Reader")
+
+# Initialize selected_tags
+selected_tags = st.multiselect("Select Tags", available_tags, default=available_tags)
+
+# Function to color code tags
+def colorize_tags(tags):
+    color_cycle = cycle(list(tag_colors.values()))
+    colored_tags = [f'<span style="color:{next(color_cycle)}">{tag}</span>' for tag in tags]
+    return ', '.join(colored_tags)
+
+def filter_entries_with_selected_tags(entry):
+    if 'tags' in entry:
+        entry_tags = [tag.term.lower() for tag in entry.tags]
+        return any(tag in entry_tags for tag in selected_tags)
+    return False
 
 for feed_url in feed_urls:
     try:
         feed = feedparser.parse(feed_url)
-
-        # Access feed information
         feed_title = feed.feed.title
         feed_description = feed.feed.description
 
-        print("Feed Title:", feed_title)
-        print("Feed Description:", feed_description)
-        print()
+        st.header(feed_title)
+        st.write(feed_description)
     except Exception as e:
-        print(e)
+        st.error(str(e))
 
-    # Access and process individual entries in the feed
-    for entry in feed.entries:
+    filtered_entries = [entry for entry in feed.entries if filter_entries_with_selected_tags(entry)]
+
+    for entry in filtered_entries:
         entry_title = entry.title
         entry_link = entry.link
         entry_published = entry.published
-        entry_summary = entry.summary
-        try:
-            entry_tags = [tag.term.lower() for tag in entry.tags]
-            entry_categories = [
-                category.term.lower() for category in entry.get('tags', [])
-            ]
-            entry_keywords = [
-                keyword.lower() for keyword in entry.get('keywords', [])
-            ]
-            if any(
-                    tag in entry_tags or tag in entry_categories or tag in entry_keywords
-                    for tag in desired_tags):
-                print("Title:", entry_title)
-                print("Link:", entry_link)
-                print("Published:", entry_published)
-                print("Tags:", entry_tags)
-                # print("Summary:", entry_summary)
-                print()
-        except Exception as e:
-            print("Title:", entry_title)
-            print("Link:", entry_link)
-            print("Published:", entry_published)
-            print("Tags:", e)
-            print()
+        entry_tags = [tag.term.lower() for tag in entry.get('tags', [])]
 
-    print("---" * 10)  # Separator between different feeds
+        try:
+            # Extract article details using BeautifulSoup
+            response = requests.get(entry_link)
+            soup = BeautifulSoup(response.text, 'html.parser')
+            img_tag = soup.find('meta', {'property': 'og:image'})
+            img_url = img_tag['content'] if img_tag else None
+        except Exception as e:
+            img_url = None
+
+        st.subheader(entry_title)
+        st.write(f"Link: [{entry_link}]({entry_link})")
+        st.write(f"Published: {entry_published}")
+        if img_url:
+            st.image(img_url, caption='Article Image', use_column_width=True)
+        st.write(f"Tags: {colorize_tags(entry_tags)}", unsafe_allow_html=True)
+        st.write("---")
