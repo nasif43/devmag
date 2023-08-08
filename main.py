@@ -3,6 +3,7 @@ import feedparser
 from bs4 import BeautifulSoup
 import requests
 from itertools import cycle
+import re
 
 feed_urls = [
     'https://dev.to/feed', 'https://hnrss.org/frontpage',
@@ -10,7 +11,6 @@ feed_urls = [
     'https://medium.com/feed/tag/data-science', 'https://medium.com/feed/tag/ml',
     'https://arstechnica.com/tech-policy/feed/',
     'https://www.smashingmagazine.com/feed/',
-    'https://feed.infoq.com/architecture-design/',
     'https://www.theverge.com/tech/rss/index.xml',
 ]
 
@@ -21,7 +21,8 @@ available_tags = [
     'computer-vision', 'reinforcement-learning', 'robotics', 'automation',
     'ethics-in-ai', 'machine-vision', 'data-analysis', 'predictive-analytics',
     'big-data', 'data-mining', 'data-visualization', 'cloud-computing',
-    'programming', 'algorithms', 'tech-news', 'innovation', 'future-tech'
+    'programming', 'algorithms', 'tech-news', 'innovation', 'future-tech', 'langchain',
+    'cloud-cost-optimization','finance', 'fintech'
 ]
 
 
@@ -34,7 +35,7 @@ tag_colors = {
     'chatgpt': 'red'
 }
 
-st.title("RSS Feed Reader")
+st.title("DevMag - The coolest magazine for developers")
 
 # Initialize selected_tags
 selected_tags = st.multiselect("Select Tags", available_tags, default=available_tags)
@@ -50,6 +51,9 @@ def filter_entries_with_selected_tags(entry):
         entry_tags = [tag.term.lower() for tag in entry.tags]
         return any(tag in entry_tags for tag in selected_tags)
     return False
+
+
+# ... (rest of your code)
 
 for feed_url in feed_urls:
     try:
@@ -69,6 +73,14 @@ for feed_url in feed_urls:
         entry_link = entry.link
         entry_published = entry.published
         entry_tags = [tag.term.lower() for tag in entry.get('tags', [])]
+        
+        # Handle cases where there is no 'description' attribute
+        if hasattr(entry, 'description'):
+            entry_summary = entry.description
+        elif hasattr(entry, 'content'):
+            entry_summary = entry.content[0].value
+        else:
+            entry_summary = ""
 
         try:
             # Extract article details using BeautifulSoup
@@ -84,5 +96,18 @@ for feed_url in feed_urls:
         st.write(f"Published: {entry_published}")
         if img_url:
             st.image(img_url, caption='Article Image', use_column_width=True)
+
+        # Clean up HTML tags from the summary
+        clean_summary = BeautifulSoup(entry_summary, 'html.parser').get_text()
+        clean_summary = re.sub(r'Continue reading.*', '', clean_summary)
+
+        summary_words = clean_summary.split()
+        max_summary_words = 100  # Adjust this value as needed
+        shortened_summary = " ".join(summary_words[:max_summary_words])
+        if len(summary_words) > max_summary_words:
+            st.write(f"Summary: {shortened_summary}... [Read More]({entry_link})")
+        else:
+            st.write(f"Summary: {shortened_summary}", unsafe_allow_html=True)
+
         st.write(f"Tags: {colorize_tags(entry_tags)}", unsafe_allow_html=True)
         st.write("---")
