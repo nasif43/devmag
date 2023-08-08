@@ -9,9 +9,8 @@ feed_urls = [
     'https://dev.to/feed', 'https://hnrss.org/frontpage',
     'https://medium.com/feed/tag/openai',
     'https://medium.com/feed/tag/data-science', 'https://medium.com/feed/tag/ml',
-    'https://arstechnica.com/tech-policy/feed/',
-    'https://www.smashingmagazine.com/feed/',
-    'https://www.theverge.com/tech/rss/index.xml',
+    'https://arstechnica.com/tech-policy/feed/', 'https://www.wired.com/feed/rss',
+    
 ]
 
 # List of available tags for selection
